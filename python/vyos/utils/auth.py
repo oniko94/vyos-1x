@@ -13,9 +13,69 @@
 # You should have received a copy of the GNU Lesser General Public License along with this library;
 # if not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
+import cracklib
+import math
 import re
+import string
 
+from enum import StrEnum
+from decimal import Decimal
 from vyos.utils.process import cmd
+
+DEFAULT_PASSWORD = 'vyos'
+LOW_ENTROPY_MSG = 'should be at least 8 characters long'
+
+
+class EPasswdStrength(StrEnum):
+    WEAK = 'Weak'
+    DECENT = 'Decent'
+    STRONG = 'Strong'
+
+
+def calculate_entropy(charset: str, passwd: str) -> float:
+    """
+    Calculate the entropy of a password based on the set of characters used
+    Uses E = log2(R**L) formula, where
+        - R is the range (length) of the character set
+        - L is the length of password
+    """
+    return math.log(math.pow(len(charset), len(passwd)), 2)
+
+def evaluate_strength(passwd: str) -> dict:
+    """ Evaluates password strength and returns a check result dict """
+    charset = (cracklib.ASCII_UPPERCASE + cracklib.ASCII_LOWERCASE +
+        string.punctuation + string.digits)
+
+    result = {
+        'strength': '',
+        'errors': [],
+    }
+
+    try:
+        cracklib.FascistCheck(passwd)
+    except ValueError as e:
+        # The password is vulnerable to dictionary attack no matter the entropy
+        if 'is' in str(e):
+            msg = str(e).replace('is', 'should not be')
+        else:
+            msg = f'should not be {e}'
+        result['strength'] = EPasswdStrength.WEAK
+        result['errors'].append(msg)
+    else:
+        # Now check the password's entropy
+        # Cast to Decimal for more precise rounding
+        entropy = Decimal.from_float(calculate_entropy(charset, passwd))
+
+        match round(entropy):
+            case e if e in range(0, 59):
+                result['strength'] = EPasswdStrength.WEAK
+                result['errors'].append(LOW_ENTROPY_MSG)
+            case e if e in range(60, 119):
+                result['strength'] = EPasswdStrength.DECENT
+            case e if e >= 120:
+                result['strength'] = EPasswdStrength.STRONG
+
+    return result
 
 def make_password_hash(password):
     """ Makes a password hash for /etc/shadow using mkpasswd """
