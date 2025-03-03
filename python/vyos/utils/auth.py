@@ -24,6 +24,8 @@ from vyos.utils.process import cmd
 
 DEFAULT_PASSWORD = 'vyos'
 LOW_ENTROPY_MSG = 'should be at least 8 characters long'
+WEAK_PASSWD_WARNING = 'The password used is weak and can compromise ' \
+    'the system security.\nFollowing issues \n@ERRORS@\n have been identified.'
 
 
 class EPasswdStrength(StrEnum):

@@ -101,6 +101,9 @@
                   <leafNode name="plaintext-password">
                     <properties>
                       <help>Plaintext password used for encryption</help>
+                      <constraint>
+                        <validator name="password_strength"/>
+                      </constraint>
                     </properties>
                   </leafNode>
                   <tagNode name="public-keys">

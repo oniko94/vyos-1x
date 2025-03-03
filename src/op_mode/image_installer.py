@@ -39,7 +39,8 @@ from vyos.template import render
 from vyos.utils.auth import (
     DEFAULT_PASSWORD,
     EPasswdStrength,
-    evaluate_strength
+    evaluate_strength,
+    WEAK_PASSWD_WARNING
 )
 from vyos.utils.io import ask_input, ask_yes_no, select_entry
 from vyos.utils.file import chmod_2775
@@ -91,8 +92,6 @@ MSG_WARN_IMAGE_NAME_WRONG: str = 'The suggested name is unsupported!\n'\
 
 MSG_WARN_CHANGE_PASSWORD: str = 'Default password used. Consider changing ' \
     'it on next login.'
-MSG_WARN_PASSWORD_WEAK: str = 'The password used is weak and can compromise ' \
-    'the system security.\nFollowing issues \n@ERRORS@\n have been identified.'
 MSG_WARN_PASSWORD_CONFIRM: str = 'The entered values did not match. Try again'
 'Installing a different image flavor may cause functionality degradation or break your system.\n' \
 'Do you want to continue with installation?'
@@ -793,14 +792,11 @@ def install_image() -> None:
             print(MSG_WARN_CHANGE_PASSWORD)
         else:
             result = evaluate_strength(user_password)
-            print('Password Strength: {}'.format(result['strength']))
+            print('Password Strength: {}.'.format(result['strength']))
 
-            passwd_weak = result['strength'] \
-                not in [EPasswdStrength.DECENT, EPasswdStrength.STRONG]
-
-            if passwd_weak:
+            if result['strength'] == EPasswdStrength.WEAK:
                 err_list = [f'  - {e}' for e in result['errors']]
-                print(MSG_WARN_PASSWORD_WEAK.replace(
+                print(WEAK_PASSWD_WARNING.replace(
                     '@ERRORS@', '\n'.join(err_list)
                 ))
 
