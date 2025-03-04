@@ -23,9 +23,9 @@ from decimal import Decimal
 from vyos.utils.process import cmd
 
 DEFAULT_PASSWORD = 'vyos'
-LOW_ENTROPY_MSG = 'should be at least 8 characters long'
-WEAK_PASSWD_WARNING = 'The password used is weak and can compromise ' \
-    'the system security.\nFollowing issues \n@ERRORS@\n have been identified.'
+LOW_ENTROPY = 'should be at least 8 characters long'
+WEAK_PASSWD_WARNING = 'Low complexity password provided. A secure password ' \
+    '@MSG@.'
 
 
 class EPasswdStrength(StrEnum):
@@ -43,14 +43,14 @@ def calculate_entropy(charset: str, passwd: str) -> float:
     """
     return math.log(math.pow(len(charset), len(passwd)), 2)
 
-def evaluate_strength(passwd: str) -> dict:
+def evaluate_strength(passwd: str) -> dict[str, str]:
     """ Evaluates password strength and returns a check result dict """
     charset = (cracklib.ASCII_UPPERCASE + cracklib.ASCII_LOWERCASE +
         string.punctuation + string.digits)
 
     result = {
         'strength': '',
-        'errors': [],
+        'error': '',
     }
 
     try:
@@ -58,11 +58,11 @@ def evaluate_strength(passwd: str) -> dict:
     except ValueError as e:
         # The password is vulnerable to dictionary attack no matter the entropy
         if 'is' in str(e):
-            msg = str(e).replace('is', 'should not be')
+            msg = str(e).replace('it is', 'should not be')
         else:
             msg = f'should not be {e}'
         result['strength'] = EPasswdStrength.WEAK
-        result['errors'].append(msg)
+        result['error'] = WEAK_PASSWD_WARNING.replace('@MSG@', msg)
     else:
         # Now check the password's entropy
         # Cast to Decimal for more precise rounding
@@ -71,7 +71,9 @@ def evaluate_strength(passwd: str) -> dict:
         match round(entropy):
             case e if e in range(0, 59):
                 result['strength'] = EPasswdStrength.WEAK
-                result['errors'].append(LOW_ENTROPY_MSG)
+                result['error'] = WEAK_PASSWD_WARNING.replace(
+                    '@MSG@', LOW_ENTROPY
+                )
             case e if e in range(60, 119):
                 result['strength'] = EPasswdStrength.DECENT
             case e if e >= 120:

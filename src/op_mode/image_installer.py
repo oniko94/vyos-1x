@@ -39,8 +39,7 @@ from vyos.template import render
 from vyos.utils.auth import (
     DEFAULT_PASSWORD,
     EPasswdStrength,
-    evaluate_strength,
-    WEAK_PASSWD_WARNING
+    evaluate_strength
 )
 from vyos.utils.io import ask_input, ask_yes_no, select_entry
 from vyos.utils.file import chmod_2775
@@ -795,10 +794,7 @@ def install_image() -> None:
             print('Password Strength: {}.'.format(result['strength']))
 
             if result['strength'] == EPasswdStrength.WEAK:
-                err_list = [f'  - {e}' for e in result['errors']]
-                print(WEAK_PASSWD_WARNING.replace(
-                    '@ERRORS@', '\n'.join(err_list)
-                ))
+                print(result['error'])
 
         confirm: str = ask_input(MSG_INPUT_PASSWORD_CONFIRM, no_echo=True,
                                  non_empty=True)
